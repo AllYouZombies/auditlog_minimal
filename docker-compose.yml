@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+  parent:
+    build:
+      dockerfile: parent.Dockerfile
+    ports:
+      - "${DJANGO_PARENT_WEB_PORT:-8000}:8000"
+    volumes:
+      - ./parent:/code
+      - ./entrypoint.sh:/code/entrypoint.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+  child:
+    build:
+      dockerfile: child.Dockerfile
+    ports:
+      - "${DJANGO_CHILD_WEB_PORT:-8001}:8000"
+    volumes:
+      - ./child:/code
+      - ./entrypoint.sh:/code/entrypoint.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
